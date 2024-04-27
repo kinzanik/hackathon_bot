@@ -31,8 +31,6 @@ def get_mes(message, caption=None):
                                    message.from_user.username, message.from_user.id))
         conn.commit()
 
-    if message.from_user.id == 2071811935:
-        bot.reply_to(message, 'иди нахуй')
     if caption is None:
         text = message.text
     else:
@@ -58,15 +56,6 @@ class QuestionAnalyzer(nn.Module):
         return out
 
 
-def get_answer(question):
-    return knowledge_base.get(question,
-                              "Извините, я не могу ответить на этот вопрос. Хотите связаться с живым куратором?")
-
-
-def call_curator():
-    return "Подождите немного, с вами свяжется живой куратор."
-
-
 @bot.message_handler(content_types=['voice'])
 def voice_handler(message):
     voice_duration = message.voice.duration
@@ -84,8 +73,6 @@ def voice_handler(message):
         answer_text = predict_answer_with_text(text)
         print("Предсказанный ответ:", answer_text)
         bot.send_message(message.chat.id, answer_text)
-
-
 
 
 @bot.message_handler(commands=['start'])
@@ -107,17 +94,81 @@ def help(message):
 
 @bot.message_handler(commands=['call_curator'])
 def call_curator(message):
-    print(get_mes(message))
-    bot.reply_to(message, call_curator())
+    sql_select_query = '''SELECT last_message FROM users_id WHERE id = ?'''
+    cursor.execute(sql_select_query, (message.from_user.id,))
+
+    result = cursor.fetchone()
+    req = (f"INSERT INTO problems (text, first_name, user_id) VALUES"
+           f" ('{result[0]}', '{message.from_user.first_name}', {message.from_user.id})")
+    cursor.execute(req)
+    conn.commit()
+    bot.reply_to(message, 'Проблема передана куратору.')
+
+    sql_select_query = '''SELECT * FROM curators'''
+
+    cursor.execute(sql_select_query)
+
+    curators = cursor.fetchone()
+    if curators:
+        for i in curators:
+            print(i)
+            bot.send_message(i, 'Поступил новый вопрос!')
+
+
+
+@bot.message_handler(commands=['login_curator'])
+def login_curator(message):
+    try:
+        password = message.text.split()[1]
+    except IndexError:
+        bot.send_message(message.chat.id, 'Вы не ввели пароль')
+        return
+    if password == '111':
+        sql_query = f"INSERT or REPLACE INTO curators (id) VALUES ({message.from_user.id})"
+        cursor.execute(sql_query)
+        conn.commit()
+        bot.send_message(message.chat.id, 'Вы успешно зашли как куратор!')
+    else:
+        bot.send_message(message.chat.id, 'Неправильный пароль.')
+
+
+@bot.message_handler(commands=['logout_curator'])
+def logout_curator(message):
+    sql_select_query = '''SELECT * FROM curators WHERE id = ?'''
+
+    cursor.execute(sql_select_query, (message.from_user.id,))
+
+    result = cursor.fetchone()
+
+    if result:
+        sql_delete_query = '''DELETE FROM curators WHERE id = ?'''
+
+        value_to_delete = (message.from_user.id,)
+
+        cursor.execute(sql_delete_query, value_to_delete)
+
+        conn.commit()
+        bot.send_message(message.chat.id, 'Вы вышли из аккаунта куратора.')
+    else:
+        bot.send_message(message.chat.id, 'Вы не куратор.')
 
 
 @bot.message_handler(func=lambda message: True)
 def answer_question(message):
     print(get_mes(message))
+    with lock:
+        sql_query = "INSERT or REPLACE INTO users_id (name, last_name, tag, id, last_message) VALUES (?, ?, ?, ?, ?)"
+        cursor.execute(sql_query, (message.from_user.first_name, message.from_user.last_name,
+                                   message.from_user.username, message.from_user.id, message.text))
+        conn.commit()
     question = message.text
     answer_text = predict_answer_with_text(question)
     print("Предсказанный ответ:", answer_text)
     bot.reply_to(message, answer_text)
+    bot.send_message(message.chat.id, 'Если решение вам не помогло, обратитесь к живому куратору командой'
+                                      ' /call_curator')
+
+
 
 
 print('Запущено')
