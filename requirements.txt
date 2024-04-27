@@ -1,0 +1,8 @@
+soundfile~=0.12.1
+pydub~=0.25.1
+torch~=2.3.0
+telebot~=0.0.5
+termcolor~=2.4.0
+pandas~=2.2.2
+nltk~=3.8.1
+scikit-learn~=1.4.2

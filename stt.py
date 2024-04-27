@@ -17,4 +17,4 @@ def speech_to_text():
             text = r.recognize_google(audio, language='ru-RU')
             return text
         except sr.exceptions.UnknownValueError:
-            return 'Я не понял, повторите пожалуйста'
+            return None
