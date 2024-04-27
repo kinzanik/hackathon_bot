@@ -6,6 +6,7 @@ import sqlite3
 import threading
 from termcolor import colored
 import speech_recognition
+from stt import *
 
 
 bot = telebot.TeleBot('7176018058:AAGfuFcUxilC8zVh49bA2LIZcxmsgEvfvIs')
@@ -37,6 +38,10 @@ knowledge_base = {
     "Информация о трудоустройстве": "Мы предоставляем помощь в трудоустройстве после успешного завершения программы. "
                                     "Обратитесь в наш отдел карьеры за подробностями."
 }
+
+
+def record_and_recognize_audio(*args: tuple, do='default'):
+    pass
 
 
 def get_mes(message, caption=None):
@@ -80,6 +85,21 @@ def get_answer(question):
 
 def call_curator():
     return "Подождите немного, с вами свяжется живой куратор."
+
+
+@bot.message_handler(content_types=['voice'])
+def voice_handler(message):
+    voice_duration = message.voice.duration
+    minutes = voice_duration // 60
+    seconds = voice_duration % 60
+    print(get_mes(message, caption=f'<Voice message {minutes:02}:{seconds:02}>'))
+    file = bot.get_file(message.voice.file_id)
+    bytes = bot.download_file(file.file_path)
+    with open('voice.ogg', 'wb') as f:
+        f.write(bytes)
+    text = speech_to_text()
+
+    bot.send_message(message.chat.id, text)
 
 
 @bot.message_handler(commands=['start'])
