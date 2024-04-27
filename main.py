@@ -56,6 +56,15 @@ class QuestionAnalyzer(nn.Module):
         return out
 
 
+def is_curator(id):
+    sql_select_query = '''SELECT * FROM curators WHERE id = ?'''
+
+    cursor.execute(sql_select_query, (id,))
+
+    result = cursor.fetchone()
+    return result
+
+
 @bot.message_handler(content_types=['voice'])
 def voice_handler(message):
     voice_duration = message.voice.duration
@@ -115,7 +124,6 @@ def call_curator(message):
             bot.send_message(i, 'Поступил новый вопрос!')
 
 
-
 @bot.message_handler(commands=['login_curator'])
 def login_curator(message):
     try:
@@ -134,11 +142,7 @@ def login_curator(message):
 
 @bot.message_handler(commands=['logout_curator'])
 def logout_curator(message):
-    sql_select_query = '''SELECT * FROM curators WHERE id = ?'''
-
-    cursor.execute(sql_select_query, (message.from_user.id,))
-
-    result = cursor.fetchone()
+    result = is_curator(message.from_user.id)
 
     if result:
         sql_delete_query = '''DELETE FROM curators WHERE id = ?'''
