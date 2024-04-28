@@ -8,6 +8,7 @@ from termcolor import colored
 import speech_recognition
 from stt import *
 from model_ai import *
+import curator_lib as curator
 
 
 bot = telebot.TeleBot('7176018058:AAGfuFcUxilC8zVh49bA2LIZcxmsgEvfvIs')
@@ -113,15 +114,44 @@ def call_curator(message):
     conn.commit()
     bot.reply_to(message, 'Проблема передана куратору.')
 
-    sql_select_query = '''SELECT * FROM curators'''
+    sql_select_query = '''SELECT id FROM curators'''
 
     cursor.execute(sql_select_query)
 
-    curators = cursor.fetchone()
+    curators = cursor.fetchall()
     if curators:
         for i in curators:
-            print(i)
-            bot.send_message(i, 'Поступил новый вопрос!')
+            bot.send_message(i[0], 'Поступил новый вопрос!')
+
+
+@bot.message_handler(commands=['curator_get_problem'])
+def curator_get_problem(message):
+    if not curator.checkCurator(message.from_user.id):
+        bot.send_message(message.chat.id, 'Вы не являетесь куратором!')
+        return
+
+    problem = curator.getNextProblem(message.from_user.id)
+    if problem is None:
+        bot.send_message(message.chat.id, 'Новых проблем не возникало!')
+        return
+
+    bot.send_message(message.chat.id, f'У {problem[2]} проблема:\n{problem[1]}')
+    bot.register_next_step_handler_by_chat_id(message.chat.id, curator_answer)
+
+
+def curator_answer(message):
+    if not curator.checkCurator(message.from_user.id):
+        bot.send_message(message.chat.id, 'Вы не являетесь куратором!')
+        return
+
+    problem = curator.getCurrentProblem(message.from_user.id)
+    if problem is None:
+        bot.send_message(message.chat.id, 'Проблема исчезла!')
+        return
+
+    bot.send_message(problem[3], f'На ваш вопрос: "{problem[1]}" куратор дал такой ответ: "{message.text}"')
+    bot.send_message(message.chat.id, 'Ваш ответ отправлен пользователю!')
+    curator.delCurrentProblem(problem[0])
 
 
 @bot.message_handler(commands=['login_curator'])

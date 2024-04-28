@@ -37,26 +37,28 @@ model.eval()  # Установите модель в режим оценки
 
 
 
-vectorizer = CountVectorizer()
 train_data = pd.read_csv('train_SecondPilot/train_data.csv')
 
-# Получение текстовых данных из столбца "Question"
+# Fill missing values in the 'Question' column with an empty string
+train_data['Question'].fillna('', inplace=True)
+
+# Get the text data from the 'Question' column
 X_train = train_data['Question']
 
-# Создание экземпляра векторизатора текста
+# Initialize the CountVectorizer
 vectorizer = CountVectorizer()
 
-# Обучение векторизатора на текстовых данных
+# Fit the vectorizer on the text data
 vectorizer.fit(X_train)
 
-# Преобразование текстовых данных в числовое представление
+# Transform the text data into a numerical representation
 X_train_vectorized = vectorizer.transform(X_train)
 
-# Преобразование разреженной матрицы в плотный массив numpy
+# Convert the sparse matrix to a dense numpy array
 X_train_dense = X_train_vectorized.toarray()
 
-# Печать размерности X_train для проверки
-print("Размерность X_train:", X_train_dense.shape)
+# Print the shape of X_train_dense for verification
+print("Shape of X_train_dense:", X_train_dense.shape)
 
 def preprocess_question(question):
     question_vectorized = vectorizer.transform([question])
